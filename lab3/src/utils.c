@@ -4,7 +4,10 @@
 #include <stdlib.h>
 void GenerateArray(int *array, unsigned int array_size, unsigned int seed) {
   srand(seed);
+	printf("Array: ");
   for (int i = 0; i < array_size; i++) {
-    array[i] = rand();
-  }
+    array[i] = rand() % 1000;
+  	printf("%d ", array[i]);
+	}
+	printf("\n");
 }
