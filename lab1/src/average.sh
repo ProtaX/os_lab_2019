@@ -9,4 +9,5 @@ do
     ARGS_ITER=$((ARGS_ITER + 1))
     shift
 done
+echo ${ARGS_ITER}
 echo "${ARGS_SUM}/${ARGS_ITER}"|bc -l

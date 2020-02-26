@@ -62,12 +62,15 @@ int main(int argc, char* argv[]) {
                               (rand_bytes[i++] << 16) |
                               (rand_bytes[i++] << 8)  |
                               (rand_bytes[i++] << 0);
+    number = number % 10;
     if (mode == STDOUT_MODE)
       printf("%d ", number);
     else
       fprintf(out_file, "%d ", number);
   }
+
   if (mode == FILE_MODE)
     fclose(out_file);
+
   return 0;
 }
