@@ -260,8 +260,13 @@ int main(int argc, char **argv) {
     int max = INT_MIN;
 
 		// Using created FILE structs
-		fscanf(file_max, "%d ", &max);
-		fscanf(file_min, "%d ", &min);
+		int res = fscanf(file_max, "%d ", &max);
+		res += fscanf(file_min, "%d ", &min);
+
+    if (res != 2) {
+      printf("Error: cannot read out files or pipes\n");
+      return -1;
+    }
 
     if (min < min_max.min) min_max.min = min;
     if (max > min_max.max) min_max.max = max;
