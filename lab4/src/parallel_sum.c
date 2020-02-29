@@ -84,14 +84,22 @@ int main(int argc, char **argv) {
 
   pthread_t threads[threads_num];
   sum_args_t args[threads_num];
+  float block = (float)array_size / threads_num;
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
   for (uint32_t i = 0; i < threads_num; i++) {
+    int begin = i * round(block);
+    int end = begin + round(block);
+    if (end > array_size)
+      end = array_size;
+    if (begin == array_size)
+      end = array_size;
+
+    args[i].begin = begin;
+    args[i].end = end;
     args[i].array = array;
-    args[i].begin = i * floor((float)array_size / threads_num);
-    args[i].end = args[i].begin + ceil((float)array_size / threads_num);
 
     if (pthread_create(&threads[i], NULL, ThreadSum, (void *)&args[i])) {
       printf("Error: pthread_create failed!\n");
