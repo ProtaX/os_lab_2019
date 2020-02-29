@@ -5,23 +5,12 @@
 #include <math.h>
 #include <getopt.h>
 
+#include <sys/time.h>
 #include "task1/utils.h"
-
-struct SumArgs {
-  int *array;
-  int begin;
-  int end;
-};
-
-int Sum(const struct SumArgs *args) {
-  int sum = 0;
-  for (int i = args->begin; i < args->end; i++)
-    sum += args->array[i];
-  return sum;
-}
+#include "libsum/sum.h"
 
 void *ThreadSum(void *args) {
-  struct SumArgs *sum_args = (struct SumArgs *)args;
+  sum_args_t *sum_args = (sum_args_t*)args;
   return (void *)(size_t)Sum(sum_args);
 }
 
@@ -94,7 +83,11 @@ int main(int argc, char **argv) {
   GenerateArray(array, array_size, seed);
 
   pthread_t threads[threads_num];
-  struct SumArgs args[threads_num];
+  sum_args_t args[threads_num];
+
+  struct timeval start_time;
+  gettimeofday(&start_time, NULL);
+
   for (uint32_t i = 0; i < threads_num; i++) {
     args[i].array = array;
     args[i].begin = i * floor((float)array_size / threads_num);
@@ -113,7 +106,14 @@ int main(int argc, char **argv) {
     total_sum += sum;
   }
 
+  struct timeval finish_time;
+  gettimeofday(&finish_time, NULL);
+
+  double elapsed_time = (finish_time.tv_sec - start_time.tv_sec) * 1000.0;
+  elapsed_time += (finish_time.tv_usec - start_time.tv_usec) / 1000.0;
+
   free(array);
   printf("Total: %d\n", total_sum);
+  printf("Elapsed time: %fms\n", elapsed_time);
   return 0;
 }
