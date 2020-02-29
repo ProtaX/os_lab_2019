@@ -31,7 +31,6 @@ void alarm_handler(int signum) {
   pid_list_t* iter = pid_list_head.next;
   pid_list_t* prev = &pid_list_head;
 
-  
   while(iter) {
     int res = kill(iter->pid, SIGKILL);
 #ifdef VERBOSE
@@ -44,6 +43,7 @@ void alarm_handler(int signum) {
     iter = iter->next;
     free(prev);
   }
+
   pid_list_head.next = NULL;
 }
 
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
             with_files = true;
             break;
 
-          defalut:
+          default:
             printf("Index %d is out of options\n", option_index);
         }
         break;
