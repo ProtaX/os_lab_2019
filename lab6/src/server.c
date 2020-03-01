@@ -98,7 +98,8 @@ int main(int argc, char **argv) {
   }
 
   int server_fd = socket(AF_INET, SOCK_STREAM, 0);  
-  /* AF_INET - IPv4, SOCK_STREAM - bidirectional 
+  /* AF_INET - IPv4, SOCK_STREAM - bidirectional, 0 - use 
+   *  AF_INET option to determine protocol
    * byte streams, supports connections
    *  */
   if (server_fd < 0) {
@@ -161,7 +162,10 @@ int main(int argc, char **argv) {
       continue;
     }
 
-    /* After we got a fd for a client, we can read from it */
+    /* After we got a fd for a client, we can read from it 
+     * For every client message calculate factorial 
+     *  then send it back
+     * */
     while (true) {
       unsigned int buffer_size = sizeof(uint64_t) * 3;
       char from_client[buffer_size];
@@ -172,6 +176,7 @@ int main(int argc, char **argv) {
        * */
       int read = recv(client_fd, from_client, buffer_size, 0);
 
+      /* No data recieved */
       if (!read)
         break;
       if (read < 0) {
@@ -199,12 +204,15 @@ int main(int argc, char **argv) {
         tnum = (end - begin) / 2;
         printf("Warning: too much threads. Continue with %d\n", tnum);
       }
+
+      /* Start threads (why?) */
       float block = (float)(end - begin) / tnum;
       for (uint32_t i = 0; i < tnum; i++) {
-        uint64_t begin_block =round();
+        uint64_t begin_block = round(block * (float)i) + 1;
+        uint64_t end_block = round(block * (i + 1.f)) + 1;
 
-        args[i].begin = 1;
-        args[i].end = 1;
+        args[i].begin = begin + begin_block;
+        args[i].end = begin + end_block;
         args[i].mod = mod;
 
         if (pthread_create(&threads[i], NULL, ThreadFactorial,
@@ -214,24 +222,32 @@ int main(int argc, char **argv) {
         }
       }
 
+      /* Join threads */
       uint64_t total = 1;
       for (uint32_t i = 0; i < tnum; i++) {
         uint64_t result = 0;
         pthread_join(threads[i], (void **)&result);
+        /* We are using thread return value (why no shared data?) */
         total = MultModulo(total, result, mod);
       }
 
       printf("Total: %llu\n", total);
 
+      /* Send back result */
       char buffer[sizeof(total)];
       memcpy(buffer, &total, sizeof(total));
+
+      /* Send a message to socket
+       * send() can be used only if socket is Connected
+       * accept() creates a Connected socket */
       err = send(client_fd, buffer, sizeof(total), 0);
       if (err < 0) {
         fprintf(stderr, "Can't send data to client\n");
         break;
       }
     }
-
+    
+    /* On both sides, receptions and transmissions are disallowed */
     shutdown(client_fd, SHUT_RDWR);
     close(client_fd);
   }
