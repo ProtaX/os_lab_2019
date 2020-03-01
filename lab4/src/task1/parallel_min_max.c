@@ -31,7 +31,6 @@ void alarm_handler(int signum) {
   pid_list_t* iter = pid_list_head.next;
   pid_list_t* prev = &pid_list_head;
 
-  
   while(iter) {
     int res = kill(iter->pid, SIGKILL);
 #ifdef VERBOSE
@@ -44,6 +43,7 @@ void alarm_handler(int signum) {
     iter = iter->next;
     free(prev);
   }
+
   pid_list_head.next = NULL;
 }
 
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
             with_files = true;
             break;
 
-          defalut:
+          default:
             printf("Index %d is out of options\n", option_index);
         }
         break;
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
   int active_child_processes = 0;
-
+  float block = (float)array_size / pnum;
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
@@ -186,11 +186,12 @@ int main(int argc, char **argv) {
       if (child_pid == 0) {
         // child always ingore its own SIGALRM
         signal(SIGALRM, SIG_IGN);
-        int begin = i * floor((float)array_size / pnum);
-				int end = begin + ceil((float)array_size / pnum);
-
-				if (begin == array_size - 1)  // last single digit thread
-					end = begin;
+        int begin = i * round(block);
+        int end = begin + round(block);
+        if (end > array_size)
+          end = array_size;
+        if (begin == array_size)
+          end = array_size;
 
         struct MinMax mm = GetMinMax(array, begin, end);
 #ifdef VERBOSE

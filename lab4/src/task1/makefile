@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-I.
 
 parallel_min_max : utils.o find_min_max utils.h find_min_max.h
-	$(CC) -lm -o parallel_min_max.out utils.o find_min_max.o parallel_min_max.c $(CFLAGS)
+	$(CC) -o parallel_min_max.out utils.o find_min_max.o parallel_min_max.c -lm $(CFLAGS)
 
 utils.o : utils.h
 	$(CC) -o utils.o -c utils.c $(CFLAGS)

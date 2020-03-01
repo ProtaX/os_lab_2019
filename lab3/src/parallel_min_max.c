@@ -128,6 +128,8 @@ int main(int argc, char **argv) {
     }
   }
 
+  float block = (float)array_size / pnum;
+
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
     if (child_pid >= 0) {
@@ -135,11 +137,10 @@ int main(int argc, char **argv) {
       active_child_processes += 1;
       if (child_pid == 0) {
         //printf("Successful fork(), child pid=%d\n", getpid());
-        int begin = i * floor((float)array_size / pnum);
-        int end = begin + ceil((float)array_size / pnum);
-
-        if (begin == array_size - 1)  // last single digit thread
-          end = begin;
+        int begin = i * round(block);
+        int end = begin + round(block);
+        if (end > array_size)
+          end = array_size;
          
         struct MinMax mm = GetMinMax(array, begin, end);
         printf("begin=%d end=%d min=%d max=%d\n", begin, end, mm.min, mm.max); 
