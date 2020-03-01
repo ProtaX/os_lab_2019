@@ -38,23 +38,23 @@ int main(int argc, char **argv) {
           case 0:
             seed = atoi(optarg);
             if (!seed) {
-							printf("Error: bad seed value\n");
-							return -1;
-						}
+              printf("Error: bad seed value\n");
+              return -1;
+            }
             break;
           case 1:
             array_size = atoi(optarg);
             if (!array_size) {
-							printf("Error: bad array size value\n");
-							return -1;
-						}
+              printf("Error: bad array size value\n");
+              return -1;
+            }
             break;
           case 2:
             threads_num = atoi(optarg);
             if (!threads_num) {
-							printf("Error: bad threads_num value\n");
-							return -1;
-						}
+              printf("Error: bad threads_num value\n");
+              return -1;
+            }
             break;
           default:
             printf("Index %d is out of options\n", option_index);

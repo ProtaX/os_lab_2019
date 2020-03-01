@@ -2,14 +2,14 @@
 #include <stdio.h>
 #include <pthread.h>
 
-pthread_mutex_t mtx_first = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mtx_second = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mtx_first = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mtx_second = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
   int very_complex_data;
 } complex_data_t;
 
-void some_dumbass_func(complex_data_t* data) {
+static void some_dumbass_func(complex_data_t* data) {
   printf("Executing some dumbass function...\n");
   pthread_mutex_lock(&mtx_first);
   for (int i = data->very_complex_data + 1; i != data->very_complex_data; )
@@ -23,7 +23,7 @@ void some_dumbass_func(complex_data_t* data) {
   printf("Some dumbass function done (HOW)\n");
 }
 
-void another_dumbass_func(complex_data_t* data) {
+static void another_dumbass_func(complex_data_t* data) {
   printf("Executing another dumbass function...\n");
   pthread_mutex_lock(&mtx_second);
   for (int i = data->very_complex_data + 1; i != data->very_complex_data; )

@@ -5,8 +5,8 @@
 #include <getopt.h>
 #include <math.h>
 
-uint64_t res = 1;
-pthread_mutex_t fac_mtx = PTHREAD_MUTEX_INITIALIZER;
+static uint64_t res = 1;
+static pthread_mutex_t fac_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
   pthread_t thread;
@@ -15,7 +15,7 @@ typedef struct {
   uint32_t mod;
 } fac_thread_t;
 
-void fac_threaded(fac_thread_t* f) {
+static void fac_threaded(fac_thread_t* f) {
   printf("Thread: id=%lu from %lu to %lu\n", f->thread, f->begin, f->end - 1);
   for (uint64_t i = f->begin; i < f->end; i++) {
     pthread_mutex_lock(&fac_mtx);
@@ -54,23 +54,23 @@ int main(int argc, char* argv[]) {
           case 0:
             k = atoi(optarg);
             if (!k) {
-							printf("Error: bad k value\n");
-							return -1;
-						}
+              printf("Error: bad k value\n");
+              return -1;
+            }
             break;
           case 1:
             pnum = atoi(optarg);
             if (!pnum) {
-							printf("Error: bad pnum value\n");
-							return -1;
-						}
+              printf("Error: bad pnum value\n");
+              return -1;
+            }
             break;
           case 2:
             mod = atoi(optarg);
             if (!mod) {
-							printf("Error: bad mod value\n");
-							return -1;
-						}
+              printf("Error: bad mod value\n");
+              return -1;
+            }
             break;
           default:
             printf("Index %d is out of options\n", option_index);
