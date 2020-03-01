@@ -186,12 +186,8 @@ int main(int argc, char **argv) {
       if (child_pid == 0) {
         // child always ingore its own SIGALRM
         signal(SIGALRM, SIG_IGN);
-        int begin = i * round(block);
-        int end = begin + round(block);
-        if (end > array_size)
-          end = array_size;
-        if (begin == array_size)
-          end = array_size;
+        int begin = round(block * (float)i);
+        int end = round(block * (i + 1.f));
 
         struct MinMax mm = GetMinMax(array, begin, end);
 #ifdef VERBOSE

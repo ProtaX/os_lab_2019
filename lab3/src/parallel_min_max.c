@@ -137,10 +137,8 @@ int main(int argc, char **argv) {
       active_child_processes += 1;
       if (child_pid == 0) {
         //printf("Successful fork(), child pid=%d\n", getpid());
-        int begin = i * round(block);
-        int end = begin + round(block);
-        if (end > array_size)
-          end = array_size;
+        int begin = round(block * (float)i);
+        int end = round(block * (i + 1.f));
          
         struct MinMax mm = GetMinMax(array, begin, end);
         printf("begin=%d end=%d min=%d max=%d\n", begin, end, mm.min, mm.max); 

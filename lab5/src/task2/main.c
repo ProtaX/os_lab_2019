@@ -104,12 +104,8 @@ int main(int argc, char* argv[]) {
   fac_thread_t thread_pool[pnum];
 
   for (uint32_t i = 0; i < pnum; i++) {
-    uint64_t begin = i * round(block) + 1;
-    uint64_t end = begin + round(block);
-    if (end >= k)
-      end = k + 1;
-    if (begin == k)
-      end = k;
+    int begin = round(block * (float)i) + 1;
+    int end = round(block * (i + 1.f)) + 1;
 
     thread_pool[i].begin = begin;
     thread_pool[i].end = end;
