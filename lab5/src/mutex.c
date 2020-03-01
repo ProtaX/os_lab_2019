@@ -22,12 +22,12 @@
 
 //#define USE_MTX
 
-void do_one_thing(int *);
-void do_another_thing(int *);
-void do_wrap_up(int);
-int common = 0; /* A shared variable for two threads */
-int r1 = 0, r2 = 0, r3 = 0;
-pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+static void do_one_thing(int *);
+static void do_another_thing(int *);
+static void do_wrap_up(int);
+static int common = 0; /* A shared variable for two threads */
+static int r1 = 0, r2 = 0, r3 = 0;
+static pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 
 int main() {
   pthread_t thread1, thread2;
@@ -59,7 +59,7 @@ int main() {
   return 0;
 }
 
-void do_one_thing(int *pnum_times) {
+static void do_one_thing(int *pnum_times) {
   int i, j, x;
   unsigned long k;
   int work;
@@ -80,7 +80,7 @@ void do_one_thing(int *pnum_times) {
   }
 }
 
-void do_another_thing(int *pnum_times) {
+static void do_another_thing(int *pnum_times) {
   int i, j, x;
   unsigned long k;
   int work;
@@ -101,7 +101,7 @@ void do_another_thing(int *pnum_times) {
   }
 }
 
-void do_wrap_up(int counter) {
+static void do_wrap_up(int counter) {
   int total;
   printf("All done, counter = %d\n", counter);
 }
