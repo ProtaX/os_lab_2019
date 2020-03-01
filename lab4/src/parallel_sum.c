@@ -90,12 +90,8 @@ int main(int argc, char **argv) {
   gettimeofday(&start_time, NULL);
 
   for (uint32_t i = 0; i < threads_num; i++) {
-    int begin = i * round(block);
-    int end = begin + round(block);
-    if (end > array_size)
-      end = array_size;
-    if (begin == array_size)
-      end = array_size;
+    int begin = round(block * (float)i);
+    int end = round(block * (i + 1.f));
 
     args[i].begin = begin;
     args[i].end = end;
