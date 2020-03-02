@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
+#include <errno.h>
 
 #include <getopt.h>
 #include <netinet/in.h>
@@ -33,9 +35,12 @@ uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
 }
 
 uint64_t Factorial(const struct FactorialArgs *args) {
-  uint64_t ans = 1;
+  uint64_t ans = args->begin;
 
-  // TODO: your code here
+  for (uint64_t i = args->begin + 1; i < args->end; i++) {
+    ans *= (i % args->mod);
+    ans %= args->mod;
+  }
 
   return ans;
 }
@@ -126,7 +131,9 @@ int main(int argc, char **argv) {
   /* Binds socket to local address (gives a name) */
   int err = bind(server_fd, (struct sockaddr *)&server, sizeof(server));
   if (err < 0) {
-    fprintf(stderr, "Can not bind to socket!");
+    if (errno == 13)
+      fprintf(stderr, "Try sudo %s\n", argv[0]);
+    fprintf(stderr, "Can not bind to socket!, errno=%d\n", errno);
     return 1;
   }
 
@@ -208,8 +215,8 @@ int main(int argc, char **argv) {
       /* Start threads (why?) */
       float block = (float)(end - begin) / tnum;
       for (uint32_t i = 0; i < tnum; i++) {
-        uint64_t begin_block = round(block * (float)i) + 1;
-        uint64_t end_block = round(block * (i + 1.f)) + 1;
+        uint64_t begin_block = round(block * (float)i);
+        uint64_t end_block = round(block * (i + 1.f));
 
         args[i].begin = begin + begin_block;
         args[i].end = begin + end_block;

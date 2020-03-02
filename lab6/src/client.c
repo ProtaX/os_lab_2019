@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 
 #include <errno.h>
 #include <getopt.h>
@@ -12,50 +13,68 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-struct Server {
+#define VERBOSE
+
+struct fac_server {
   char ip[255];
   int port;
 };
 
-typedef struct {
-  server_t server;
-  server_list_t* next;
-} server_list_t;
+struct fac_server_list {
+  struct fac_server server;
+  struct fac_server_list* next;
+};
 
-typedef struct Server server_t;
+typedef struct fac_server fac_server_t;
+typedef struct fac_server_list fac_server_list_t;
 
-static int read_servers_file(const char* filename, server_list_t* arr, int* len) {
+static fac_server_list_t* read_servers_file(const char* filename, fac_server_list_t* arr, int* len) {
+  
   if (access(filename, F_OK) == -1) {
     printf("Error: file %s does not exist\n", filename);
-    return -1;
+    return 0;
   }
 
-  FILE* file = fopen(filename, "rt");
+  FILE* file = fopen(filename, "r");
   if (!file) {
     printf("Error: cannot open file %s\n", filename);
-    return -1;
+    return 0;
   }
  
-  server_list_t* head = arr;
+  fac_server_list_t* first = NULL;
   int i;
   for (i = 0 ;; ++i) {
     if (i == 255) {
       printf("Warning: cannot operate with more than 255 servers\n");
       break;
     }
-    head = (server_list_t*)malloc(sizeof(server_list_t));
+    fac_server_list_t* head = (fac_server_list_t*)malloc(sizeof(fac_server_list_t));
     head->next = NULL;
-    if (fscanf(filename, "%s:%d\n", head->server.ip, head->server.port) != 2) {
+    int res = fscanf(file, "%s : %d", head->server.ip, &head->server.port);
+    if (res != 2) {
       free(head);
-      break;
+      /* No more strings */
+      if (res == EOF)
+        break;
+      /* Else error occured */
+      fclose(file);
+      return 0;
     }
-    head->next = arr->next;
-    arr->next = head;
+#ifdef VERBOSE
+    printf("Got server %s:%d\n", head->server.ip, head->server.port);
+#endif
+    if (!first)
+      first = head;
+    else {
+      head->next = first->next;
+      first->next = head;
+    }
   }
 
   fclose(file);
   *len = i;
-  return 0;
+  //arr = first;
+  return first;
 }
 
 static uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
@@ -88,6 +107,7 @@ static bool ConvertStringToUI64(const char *str, uint64_t *val) {
 int main(int argc, char **argv) {
   uint64_t k = -1;
   uint64_t mod = -1;
+  uint64_t res = 1;
   /* Netmask is 255.255.255.0 */
   /* Should`nt it be 254 ? */
   char servers[255] = {'\0'};
@@ -122,8 +142,7 @@ int main(int argc, char **argv) {
         }
         break;
       case 2:
-        char* res = memcpy(servers, optarg, strlen(optarg));
-        if (res != servers) {
+        if (memcpy(servers, optarg, strlen(optarg)) != servers) {
           printf("memcpy() error\n");
           return -1;
         }
@@ -149,26 +168,33 @@ int main(int argc, char **argv) {
 
   // TODO: for one server here, rewrite with servers from file
   unsigned int servers_num;
-  server_list_t* servers_list;
-  if (read_server_file(servers, servers_list, &servers_num) == -1) {
+  fac_server_list_t* servers_list;
+  if ((servers_list = read_servers_file(servers, servers_list, &servers_num)) == 0) {
     printf("Error: cannot read servers file\n");
     return -1;
   }
-
+#ifdef VERBOSE
+  printf("Got server list, len=%d\n", servers_num);
+#endif
+  float block = (float)k / servers_num;
   // TODO: work continiously, rewrite to make parallel
   for (int i = 0; i < servers_num; i++) {
-    server_t s* = &servers_list[i].server;
-    struct hostent *hostname = gethostbyname(s.ip);
+    uint64_t begin = round(block * (float)i) + 1;
+    uint64_t end = round(block * (i + 1.f)) + 1;
+
+    fac_server_t* s = &servers_list->server;
+    struct hostent *hostname = gethostbyname(s->ip);
     if (hostname == NULL) {
-      fprintf(stderr, "gethostbyname failed with %s\n", s.ip);
+      fprintf(stderr, "gethostbyname failed with %s\n", s->ip);
       exit(1);
     }
 
     struct sockaddr_in server;
     server.sin_family = AF_INET;
-    server.sin_port = htons(s.port);
+    server.sin_port = htons(s->port);
     server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr);
-
+    
+    /* Wy do we open socket every time? */
     int sck = socket(AF_INET, SOCK_STREAM, 0);
     if (sck < 0) {
       fprintf(stderr, "Socket creation failed!\n");
@@ -182,11 +208,6 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    // TODO: for one server
-    // parallel between servers
-    uint64_t begin = 1;
-    uint64_t end = k;
-
     char task[sizeof(uint64_t) * 3];
     memcpy(task, &begin, sizeof(uint64_t));
     memcpy(task + sizeof(uint64_t), &end, sizeof(uint64_t));
@@ -197,21 +218,22 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
+    //TODO: make async
     char response[sizeof(uint64_t)];
     if (recv(sck, response, sizeof(response), 0) < 0) {
       fprintf(stderr, "Recieve failed\n");
       exit(1);
     }
 
-    // TODO: from one server
-    // unite results
     uint64_t answer = 0;
     memcpy(&answer, response, sizeof(uint64_t));
     printf("answer: %llu\n", answer);
-
+    res *= answer;
+    servers_list = servers_list->next;
     close(sck);
   }
   free(servers_list);
-
+  
+  printf("Result: %lu\n", res);
   return 0;
 }
