@@ -6,35 +6,16 @@
 #include <unistd.h>
 #include <math.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include <getopt.h>
-#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include "pthread.h"
+#include "libnetfac/netfac.h"
 
-struct FactorialArgs {
-  uint64_t begin;
-  uint64_t end;
-  uint64_t mod;
-};
-
-uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
-  uint64_t result = 0;
-  a = a % mod;
-  while (b > 0) {
-    if (b % 2 == 1)
-      result = (result + a) % mod;
-    a = (a * 2) % mod;
-    b /= 2;
-  }
-
-  return result % mod;
-}
-
-uint64_t Factorial(const struct FactorialArgs *args) {
+static uint64_t Factorial(const fac_args_t* args) {
   uint64_t ans = args->begin;
 
   for (uint64_t i = args->begin + 1; i < args->end; i++) {
@@ -45,8 +26,8 @@ uint64_t Factorial(const struct FactorialArgs *args) {
   return ans;
 }
 
-void *ThreadFactorial(void *args) {
-  struct FactorialArgs *fargs = (struct FactorialArgs *)args;
+static void *ThreadFactorial(void *args) {
+  fac_args_t* fargs = (fac_args_t*)args;
   return (void *)(uint64_t *)Factorial(fargs);
 }
 
@@ -112,10 +93,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  struct sockaddr_in server;
-  server.sin_family = AF_INET;  /* Always */
-  server.sin_port = htons((uint16_t)port);  /* Host to network */
-  server.sin_addr.s_addr = htonl(INADDR_ANY);  /* Every local address */
+  struct sockaddr_in server = create_sockaddr(port, INADDR_ANY);
 
   int opt_val = 1;
   /* Set socket flags:
@@ -174,7 +152,7 @@ int main(int argc, char **argv) {
      *  then send it back
      * */
     while (true) {
-      unsigned int buffer_size = sizeof(uint64_t) * 3;
+      size_t buffer_size = sizeof(fac_args_t);
       char from_client[buffer_size];
 
       /* Recieves a message from a socket
@@ -206,20 +184,17 @@ int main(int argc, char **argv) {
 
       fprintf(stdout, "Receive: %llu %llu %llu\n", begin, end, mod);
 
-      struct FactorialArgs args[tnum];
       if (tnum > (end - begin) / 2) {
         tnum = (end - begin) / 2;
         printf("Warning: too much threads. Continue with %d\n", tnum);
       }
-
+      struct FactorialArgs args[tnum];
+      
       /* Start threads (why?) */
       float block = (float)(end - begin) / tnum;
       for (uint32_t i = 0; i < tnum; i++) {
-        uint64_t begin_block = round(block * (float)i);
-        uint64_t end_block = round(block * (i + 1.f));
-
-        args[i].begin = begin + begin_block;
-        args[i].end = begin + end_block;
+        args[i].begin = begin + round(block * (float)i);
+        args[i].end = begin + round(block * (i + 1.f));
         args[i].mod = mod;
 
         if (pthread_create(&threads[i], NULL, ThreadFactorial,

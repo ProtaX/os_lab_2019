@@ -13,23 +13,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include "libnetfac/netfac.h"
+
 #define VERBOSE
 
-struct fac_server {
-  char ip[255];
-  int port;
-};
-
-struct fac_server_list {
-  struct fac_server server;
-  struct fac_server_list* next;
-};
-
-typedef struct fac_server fac_server_t;
-typedef struct fac_server_list fac_server_list_t;
-
-static fac_server_list_t* read_servers_file(const char* filename, fac_server_list_t* arr, int* len) {
-  
+static fac_server_list_t* read_servers_file(const char* filename, int* len) {
   if (access(filename, F_OK) == -1) {
     printf("Error: file %s does not exist\n", filename);
     return 0;
@@ -44,10 +32,6 @@ static fac_server_list_t* read_servers_file(const char* filename, fac_server_lis
   fac_server_list_t* first = NULL;
   int i;
   for (i = 0 ;; ++i) {
-    if (i == 255) {
-      printf("Warning: cannot operate with more than 255 servers\n");
-      break;
-    }
     fac_server_list_t* head = (fac_server_list_t*)malloc(sizeof(fac_server_list_t));
     head->next = NULL;
     int res = fscanf(file, "%s : %d", head->server.ip, &head->server.port);
@@ -73,21 +57,7 @@ static fac_server_list_t* read_servers_file(const char* filename, fac_server_lis
 
   fclose(file);
   *len = i;
-  //arr = first;
   return first;
-}
-
-static uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
-  uint64_t result = 0;
-  a = a % mod;
-  while (b > 0) {
-    if (b % 2 == 1)
-      result = (result + a) % mod;
-    a = (a * 2) % mod;
-    b /= 2;
-  }
-
-  return result % mod;
 }
 
 static bool ConvertStringToUI64(const char *str, uint64_t *val) {
@@ -108,9 +78,8 @@ int main(int argc, char **argv) {
   uint64_t k = -1;
   uint64_t mod = -1;
   uint64_t res = 1;
-  /* Netmask is 255.255.255.0 */
-  /* Should`nt it be 254 ? */
-  char servers[255] = {'\0'};
+  /* Domain name max length is 255 bytes */
+  char servers_file[255] = {'\0'};
 
   while (true) {
     int current_optind = optind ? optind : 1;
@@ -142,7 +111,7 @@ int main(int argc, char **argv) {
         }
         break;
       case 2:
-        if (memcpy(servers, optarg, strlen(optarg)) != servers) {
+        if (memcpy(servers_file, optarg, strlen(optarg)) != servers_file) {
           printf("memcpy() error\n");
           return -1;
         }
@@ -160,46 +129,60 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (k == -1 || mod == -1 || !strlen(servers)) {
+  if (k == -1 || mod == -1 || !strlen(servers_file)) {
     fprintf(stderr, "Using: %s --k 1000 --mod 5 --servers /path/to/file\n",
             argv[0]);
     return 1;
   }
 
-  // TODO: for one server here, rewrite with servers from file
   unsigned int servers_num;
   fac_server_list_t* servers_list;
-  if ((servers_list = read_servers_file(servers, servers_list, &servers_num)) == 0) {
+  if ((servers_list = read_servers_file(servers_file, &servers_num)) == 0) {
     printf("Error: cannot read servers file\n");
     return -1;
+  }
+
+  if (servers_num > k / 2) {
+    servers_num = k / 2;
+    printf("Warning: too much servers. Continue with %d\n", servers_num);
   }
 #ifdef VERBOSE
   printf("Got server list, len=%d\n", servers_num);
 #endif
-  float block = (float)k / servers_num;
-  // TODO: work continiously, rewrite to make parallel
-  for (int i = 0; i < servers_num; i++) {
-    uint64_t begin = round(block * (float)i) + 1;
-    uint64_t end = round(block * (i + 1.f)) + 1;
 
-    fac_server_t* s = &servers_list->server;
-    struct hostent *hostname = gethostbyname(s->ip);
+  float block = (float)k / servers_num;
+  int i = 0;
+  for (fac_server_list_t* servers_list_item = servers_list; servers_list_item != NULL; ) {
+
+    fac_args_t package = {
+      .begin = round(block * (float)i) + 1,
+      .end = round(block * (i + 1.f)) + 1,
+      .mod = mod
+    };
+
+    fac_server_t* s_data = &servers_list_item->server;
+    struct hostent *hostname = gethostbyname(s_data->ip);
     if (hostname == NULL) {
-      fprintf(stderr, "gethostbyname failed with %s\n", s->ip);
+      fprintf(stderr, "gethostbyname failed with %s\n", s_data->ip);
       exit(1);
     }
 
-    struct sockaddr_in server;
-    server.sin_family = AF_INET;
-    server.sin_port = htons(s->port);
-    server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr);
-    
+    struct sockaddr_in server = {
+      .sin_family = AF_INET, /* Always */
+      .sin_port = htons(s_data->port), /* Host to network short */
+      .sin_addr.s_addr = *((unsigned long *)hostname->h_addr), /* Why no htonl? */
+      .sin_zero = {0}
+    };
+
     /* Wy do we open socket every time? */
     int sck = socket(AF_INET, SOCK_STREAM, 0);
     if (sck < 0) {
       fprintf(stderr, "Socket creation failed!\n");
       exit(1);
     }
+#ifdef VERBOSE
+    printf("Socket [%s:%d] created\n", s_data->ip, s_data->port);
+#endif
 
     /* Connects socket sck to address server */
     // TODO: if failed, continue?
@@ -208,17 +191,16 @@ int main(int argc, char **argv) {
       exit(1);
     }
 
-    char task[sizeof(uint64_t) * 3];
-    memcpy(task, &begin, sizeof(uint64_t));
-    memcpy(task + sizeof(uint64_t), &end, sizeof(uint64_t));
-    memcpy(task + 2 * sizeof(uint64_t), &mod, sizeof(uint64_t));
-
-    if (send(sck, task, sizeof(task), 0) < 0) {
+    if (send(sck, &package, sizeof(package), 0) < 0) {
       fprintf(stderr, "Send failed\n");
       exit(1);
     }
+#ifdef VERBOSE
+    printf("Data sent\n");
+#endif
 
     //TODO: make async
+    /* No address check? */
     char response[sizeof(uint64_t)];
     if (recv(sck, response, sizeof(response), 0) < 0) {
       fprintf(stderr, "Recieve failed\n");
@@ -228,12 +210,17 @@ int main(int argc, char **argv) {
     uint64_t answer = 0;
     memcpy(&answer, response, sizeof(uint64_t));
     printf("answer: %llu\n", answer);
-    res *= answer;
-    servers_list = servers_list->next;
+    res = MultModulo(res, answer, mod);
+
+    /* End of for statement */
+    fac_server_list_t* prev_server = servers_list_item;
+    servers_list_item = servers_list_item->next;
+    free(prev_server);
+    i++;
+
     close(sck);
   }
-  free(servers_list);
-  
+
   printf("Result: %lu\n", res);
   return 0;
 }

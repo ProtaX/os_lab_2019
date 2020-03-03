@@ -3,17 +3,21 @@ all: client server
 
 dbg: client-dbg server-dbg
 
-client-dbg: client.c
-	gcc -o client-dbg.out -lpthread -lm -g -O0 client.c
+client-dbg: client.c libnetfac
+	gcc -o client-dbg.out client.c -I./libnetfac -L./ -lpthread -lm -lnetfac -g -O0
 
-server-dbg: server.c
-	gcc -o server-dbg.out -lpthread -lm -g -O0 server.c
+server-dbg: server.c libnetfac
+	gcc -o server-dbg.out  server.c -I./libnetfac -L./ -lpthread -lm -lnetfac -g -O0
 
-client: client.c
-	gcc -o client.out -lpthread -lm client.c
+client: client.c libnetfac
+	gcc -o client.out client.c -I./libnetfac -L./ -lpthread -lm -lnetfac
 
-server: server.c
-	gcc -o server.out -lpthread -lm server.c
+server: server.c libnetfac
+	gcc -o server.out server.c -I./libnetfac -L./ -lpthread -lm -lnetfac
+
+libnetfac: ./libnetfac/netfac.c
+	gcc -o ./libnetfac/libnetfac.o -c ./libnetfac/netfac.c -I./libnetfac
+	ar rcs ./libnetfac.a ./libnetfac/libnetfac.o
 
 clean:
-	rm *.o *.a *.out -f
+	rm -r *.o *.a *.out -f
