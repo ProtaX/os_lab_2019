@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
       if (!read)
         break;
       if (read < 0) {
-        fprintf(stderr, "Client read failed\n");
+        fprintf(stderr, "Client %d read failed, errno=%d\n", client_fd, errno);
         break;
       }
       if (read < buffer_size) {
@@ -174,7 +174,6 @@ int main(int argc, char **argv) {
       }
 
       pthread_t threads[tnum];
-
       uint64_t begin = 0;
       uint64_t end = 0;
       uint64_t mod = 0;
@@ -188,8 +187,8 @@ int main(int argc, char **argv) {
         tnum = (end - begin) / 2;
         printf("Warning: too much threads. Continue with %d\n", tnum);
       }
-      struct FactorialArgs args[tnum];
-      
+      fac_args_t args[tnum];
+
       /* Start threads (why?) */
       float block = (float)(end - begin) / tnum;
       for (uint32_t i = 0; i < tnum; i++) {
@@ -228,7 +227,7 @@ int main(int argc, char **argv) {
         break;
       }
     }
-    
+
     /* On both sides, receptions and transmissions are disallowed */
     shutdown(client_fd, SHUT_RDWR);
     close(client_fd);
