@@ -18,10 +18,8 @@
 static uint64_t Factorial(const fac_args_t* args) {
   uint64_t ans = args->begin;
 
-  for (uint64_t i = args->begin + 1; i < args->end; i++) {
-    ans *= (i % args->mod);
-    ans %= args->mod;
-  }
+  for (uint64_t i = args->begin + 1; i < args->end; i++)
+    ans = MultModulo(ans, i, args->mod);
 
   return ans;
 }

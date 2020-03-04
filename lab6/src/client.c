@@ -53,22 +53,22 @@ static void server_recieve_task(fac_server_t* server) {
 /* Join threads and free data */
 static void finalize_tasks() {
   fac_server_list_t* iter = servers_list;
-  for (int i = 0; i < servers_num; i++) {
-    if (pthread_join(iter->server.thread, NULL) != 0) {
-      printf("Error: cannot join %d\n", iter->server.thread);
-      exit(1);
-    }
+  for (int i = 0; iter != NULL; ) {
+    if (i < servers_num)
+      /* Some servers may be unused 
+       * but we have to free memory anyway
+       * */
+      if (pthread_join(iter->server.thread, NULL) != 0) {
+        printf("Error: cannot join %d\n", iter->server.thread);
+        exit(1);
+      }
 #ifdef VERBOSE
     printf("Thread %d joined\n", iter->server.thread);
 #endif
     fac_server_list_t* prev = iter;
-    if (iter->next)
-      iter = iter->next;
-    // TODO: mem leak
-    /* not every server is freed
-     * servers_list can contain more than servers_num
-     * */
+    iter = iter->next;
     free(prev);
+    i++;
   }
 }
 
