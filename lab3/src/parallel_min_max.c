@@ -164,6 +164,7 @@ int main(int argc, char **argv) {
           write(min_max_pipe[1][1], (void*)max_to_str, strlen(max_to_str));
           flock(min_max_pipe[1][1], LOCK_UN);
         }
+        free(array);
         return 0;
       }
 

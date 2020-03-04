@@ -12,6 +12,7 @@
 #define SADDR struct sockaddr
 
 int main() {
+  /* Why no define? */
   const size_t kSize = sizeof(struct sockaddr_in);
 
   int lfd, cfd;
@@ -49,6 +50,7 @@ int main() {
     }
     printf("connection established\n");
 
+    /* Why recv() in lab6? */
     while ((nread = read(cfd, buf, BUFSIZE)) > 0) {
       write(1, &buf, nread);
     }
@@ -59,4 +61,5 @@ int main() {
     }
     close(cfd);
   }
+  close(lfd);
 }
