@@ -133,6 +133,7 @@ int main(int argc, char **argv) {
   uint64_t mod = -1;
   context.res = 1;
   /* Domain name max length is 255 bytes */
+  /* Linux file name max length is 255 bytes */
   char servers_file[255] = {'\0'};
 
   while (true) {
@@ -184,7 +185,7 @@ int main(int argc, char **argv) {
   }
 
   if (k == -1 || mod == -1 || !strlen(servers_file)) {
-    fprintf(stderr, "Using: %s --k 1000 --mod 5 --servers /path/to/file\n",
+    fprintf(stderr, "Using: %s --k [1000] --mod 5 --servers /path/to/file\n",
             argv[0]);
     return 1;
   }

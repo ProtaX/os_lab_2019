@@ -15,12 +15,25 @@ typedef struct {
   uint32_t mod;
 } fac_thread_t;
 
+static uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
+  uint64_t result = 0;
+  a = a % mod;
+
+  while (b > 0) {
+    if (b % 2 == 1)
+      result = (result + a) % mod;
+    a = (a * 2) % mod;
+    b /= 2;
+  }
+
+  return result % mod;
+}
+
 static void fac_threaded(fac_thread_t* f) {
   printf("Thread: id=%lu from %lu to %lu\n", f->thread, f->begin, f->end - 1);
   for (uint64_t i = f->begin; i < f->end; i++) {
     pthread_mutex_lock(&fac_mtx);
-    res *= i;
-    res %= f->mod;
+    res = MultModulo(res, i, f->mod);
     if (!res) {
       printf("Error: uint64_t overflow (i=%lu)\n", i);
       pthread_mutex_unlock(&fac_mtx);
