@@ -3,11 +3,14 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
 
 #define SEM_NAME "/semaphore1"
+#define VERBOSE
+#define PAUSE_AFTER_SEM_POST
 
 struct paper_list {
   char text[256];
@@ -37,28 +40,37 @@ static void printer_task() {
     iter->next = paper_printed_head.next;
     paper_printed_head.next = iter;
 
+#ifdef VERBOSE
     printf("Printer printed: %s\n", iter->text);
+#endif
 
     iter = paper_blank_head.next;
     pthread_mutex_unlock(&sem_mtx);
-
     sem_post(sem);
-    //sleep(1);
+
+#ifdef PAUSE_AFTER_SEM_POST
+    sleep(1);
+#endif
   }
-  sem_post(sem);
+  sem_post(sem);  /* Signal to finish collector_task */
 }
 
 /* Takes a ready sheet and prints it on the screen */
 static void collector_task() {
   while (1) {
-    sem_wait(sem);
+    sem_wait(sem);  /* ??? */
     /* Signal if printer_task finished */
-    if (!paper_printed_head.next)
+    if (!paper_printed_head.next) {
+#ifdef VERBOSE
+      printf("Printer stack is empty, collector_task finished\n");
+#endif
       return;
+    }
 
     pthread_mutex_lock(&sem_mtx);
     paper_list_t* iter = paper_printed_head.next;
 
+    /* Iterate printer stack and print on the screen */
     while (iter) {
       printf("Collector got: %s\n", iter->text);
       iter = iter->next;
