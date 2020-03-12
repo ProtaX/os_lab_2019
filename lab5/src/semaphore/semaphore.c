@@ -12,76 +12,65 @@
 struct paper_list {
   char text[256];
   struct paper_list* next;
-  struct paper_list* prev;
 };
+typedef struct paper_list paper_list_t;
 
-static struct paper_list paper_list_head = { "\0", NULL };
-static struct paper_list* paper_list_done = NULL;
+/* Pointer to the top element of blank sheets stack */
+static paper_list_t paper_blank_head = { "\0", NULL };
+/* Pointer to the top element of printed sheets stack */
+static paper_list_t paper_printed_head = { "\0", NULL };
+
 static sem_t* sem;
 static pthread_mutex_t sem_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 /* Prints on all sheets and increments the semaphore */
-void printer_task() {
-  struct paper_list* iter = paper_list_head.next;
+static void printer_task() {
+  paper_list_t* iter = paper_blank_head.next;
   int counter = 1;
 
   while (iter) {
     pthread_mutex_lock(&sem_mtx);
     sprintf(iter->text, "Hello, list #%d!", counter++);
-    /* Move item to done queue */
-    struct paper_list* next = iter->next;
-    if (!paper_list_done) {
-      paper_list_done = iter;
-      iter->next->prev = iter->prev;
-      iter->prev->next = iter->next;
-      paper_list_done->next = NULL;
-      paper_list_done->prev = NULL;
-    }
-    else {
-      iter->next = paper_list_done->next;
-      iter->prev = paper_list_done;
-      iter->next->prev = iter;
-      iter->prev->next = iter;
-    }
+
+    /* Move to the printed stack */
+    paper_blank_head.next = iter->next;
+    iter->next = paper_printed_head.next;
+    paper_printed_head.next = iter;
 
     printf("Printer printed: %s\n", iter->text);
-    iter = next;
+
+    iter = paper_blank_head.next;
     pthread_mutex_unlock(&sem_mtx);
 
     sem_post(sem);
     //sleep(1);
   }
+  sem_post(sem);
 }
 
 /* Takes a ready sheet and prints it on the screen */
-void collector_task() {
-  int i;
-  struct paper_list* iter;
-  while(1) {
+static void collector_task() {
+  while (1) {
     sem_wait(sem);
+    /* Signal if printer_task finished */
+    if (!paper_printed_head.next)
+      return;
+
     pthread_mutex_lock(&sem_mtx);
-    iter = paper_list_done;
+    paper_list_t* iter = paper_printed_head.next;
 
-    printf("Collectpr\n");
-
-    if (!iter)
-      continue;
     while (iter) {
-      printf("Got sheet: %s\n", iter->text);
-      /* Remove printed */
-      if (iter->next)
-        iter->next->prev = iter->prev;
-      if (iter->prev)
-        iter->prev->next = iter->next;
-      /* Iterate */
+      printf("Collector got: %s\n", iter->text);
       iter = iter->next;
+      free(paper_printed_head.next);
+      paper_printed_head.next = iter;
     }
     pthread_mutex_unlock(&sem_mtx);
   }
 }
 
 /* Creates 10 sheets of paper */
-void worker_task() {
+static void worker_task() {
   if ((sem = sem_open(SEM_NAME, O_CREAT, 0777, 0)) == SEM_FAILED) {
     perror("sem_open");
     exit(1);
@@ -91,9 +80,8 @@ void worker_task() {
   int i;
   for (i = 0; i < 10; i++) {
     struct paper_list* item = (struct paper_list*)malloc(sizeof(struct paper_list));
-    item->next = paper_list_head.next;
-    item->prev = &paper_list_head;
-    paper_list_head.next = item;
+    item->next = paper_blank_head.next;
+    paper_blank_head.next = item;
   }
 }
 
