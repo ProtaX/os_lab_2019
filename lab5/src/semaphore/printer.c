@@ -45,8 +45,8 @@ static void printer_task() {
 #endif
 
     iter = paper_blank_head.next;
-    pthread_mutex_unlock(&sem_mtx);
     sem_post(sem);
+    pthread_mutex_unlock(&sem_mtx);
 
 #ifdef PAUSE_AFTER_SEM_POST
     sleep(1);
