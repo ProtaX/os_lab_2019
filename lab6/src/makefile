@@ -15,7 +15,7 @@ client: libnetfac client.c
 server: libnetfac server.c
 	gcc -o server.out server.c -I./libnetfac -L./ -lpthread -lm -lnetfac
 
-libnetfac: ./libnetfac/netfac.c ./libnetfac/netfac.р
+libnetfac: ./libnetfac/netfac.c ./libnetfac/netfac.h
 	gcc -o ./libnetfac/libnetfac.o -c ./libnetfac/netfac.c -I./libnetfac
 	ar rcs ./libnetfac.a ./libnetfac/libnetfac.o
 
